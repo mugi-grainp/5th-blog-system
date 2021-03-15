@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ja">
+    <head>
+        <meta charset="utf-8">
+        <meta name="robots" content="noindex,nofollow">
+        <title>管理画面 | Simple Blog System</title>
+        <link rel="stylesheet" href="control-view.css">
+        <script src="article-post-ajax.js"></script>
+    </head>
+    <body>
+            <header>
+                <h1>Simple Blog System - 管理画面</h1>
+            </header>
+            <main>
+                <h2>新規投稿</h2>
+                <form id="article-submit-form" name="article-submit">
+                    <p><label>記事タイトル：<input type="text" name="title" required></label></p>
+                    <p><label>記事本文：<br><textarea name="article" rows="10" required></textarea></p>
+                    <p><label>記事要約：<br><textarea name="summary" rows="2" required></textarea></p>
+                    <p><label>キーワード：<input type="text" name="keywords" required></label></p>
+                    <p><label>著作権表記：<input type="text" name="copyright" id="copyright" required></label></p>
+                    <p><label>投稿日：<input type="date" name="postdate" required></label></p>
+                    <p><label>ディレクトリ：<input type="text" name="directory" required></label></p>
+                    <p><label><input type="checkbox" name="overwrite">すでに記事がある場合に上書きする</label></p>
+                    <p><input id="submit" type="button" value="投稿"><input id="resetbtn" type="reset" value="リセット"></p>
+                </form>
+                <h2>返却</h2>
+                <textarea id="return-data" rows="2"></textarea>
+            </main>
+    </body>
+</html>

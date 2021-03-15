@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# 初期化 ------------------------------
+set -u
+umask 0022
+PATH='/usr/bin:/bin'
+IFS=$(printf ' \t\n_'); IFS=${IFS%_}
+export IFS LC_ALL=C LANG=C PATH
+# -------------------------------------
+
+# フィールド名・POSTデータ格納ファイル名の受け取り
+field_name=${1}
+fname=${2}
+
+field_sep=$(head -n 1 $fname)
+
+cat $fname |
+sed -n "/${field_name}/,/${field_sep}/p" |
+sed -e '1,2d' -e '$d'

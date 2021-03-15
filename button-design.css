@@ -1,0 +1,39 @@
+a.btn-square {
+    display: inline-block;
+    padding: 1.5em 1em;
+    margin: 0.1em 0.2em;
+    text-decoration: none;
+    background: #668ad8;/*ボタン色*/
+    color: #FFF;
+    border-bottom: solid 4px #627295;
+    border-radius: 3px;
+    width: 90%;
+}
+
+a.btn-square:active {
+    /*ボタンを押したとき*/
+    -webkit-transform: translateY(4px);
+    transform: translateY(4px);/*下に動く*/
+    border-bottom: none;/*線を消す*/
+}
+
+a.btn-square:hover {
+    /* ボタン上にカーソルを持っていったとき */
+    background-color: #739fff;
+}
+
+a.btn-partial-published { 
+    background: #ff9900;
+    color: #000000;
+    border-bottom: solid 4px #cc6600;
+}
+
+a.btn-partial-published:hover { 
+    background: #ffcc00;
+}
+
+a.btn-not-exist { 
+    background: #CCCCCC;
+    color: #000000;
+    border-bottom: none;
+}
