@@ -40,7 +40,7 @@ postdate_directory=$(echo $postdate_hamekomi | tr -d '.')
 copyright_str=$(grep 'copyright' $Tmp-metadata.tmp | cut -f2)
 summary=$(grep 'summary' $Tmp-metadata.tmp | cut -f2)
 article_permalink=$(grep 'article_directory' $Tmp-metadata.tmp | cut -f2)
-keywords=$(grep 'keywords' $Tmp-metadata.tmp | cut -f2)
+article_keywords=$(grep 'keywords' $Tmp-metadata.tmp | cut -f2)
 
 # 記事ファイル配置先のパス
 article_directory="$(dirname $0)/../../posts/${postdate_directory}-${article_permalink}"
@@ -54,6 +54,7 @@ awk -f $(dirname $0)/hamekomi.awk \
     -v honbun_file="$Tmp-honbun" \
     -v title="${article_title}" \
     -v postdate="${postdate_hamekomi}" \
+    -v keywords="${article_keywords}" \
     $(dirname $0)/../templates/template.html > $Tmp-article-html
 
 # ファイル配置

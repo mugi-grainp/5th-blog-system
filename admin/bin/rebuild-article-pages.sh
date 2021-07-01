@@ -44,7 +44,8 @@ mv $article_dir $article_dir_old
 mkdir -p $article_dir
 
 # 記事リストファイルを退避
-cp $(dirname $0)/../article-list.txt $(dirname $0)/../article-list-old.txt
+mv $(dirname $0)/../article-list.txt $(dirname $0)/../article-list-old.txt
+touch $(dirname $0)/../article-list.txt
 # -----------------------------------------------------------------------------------------------------------
 
 # -----------------------------------------------------------------------------------------------------------
