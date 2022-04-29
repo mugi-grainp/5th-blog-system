@@ -21,6 +21,17 @@
 
 UNIX的環境で動作します。
 
+通常の利用法は次の通りです。
+
+    # 1. トップディレクトリで記事をMarkdown形式で書く
+    # 2. 記事を生成する
+    admin/bin/article-generate.sh article.md
+
+    # 3. 記事一覧ファイルを更新する
+    admin/bin/archive-listpage-generate.sh
+
+#### 記事生成
+
     $ admin/bin/article-generate.sh article.md
     
     <出力>
@@ -52,10 +63,43 @@ UNIX的環境で動作します。
 - 8行目: H1 -> 記事リンクの文字列 https://www.example.net/posts/20210316-local-script-test/
 - 10行目: H2 -> 記事ページのタイトル
 
+#### 記事一覧ファイルの更新
+
+トップページには最新記事から指定数 (article-generate.sh の ARTICLE_COUNT に指定した数) だけの記事へのリンク
+が生成されます。このコマンドは、archivesディレクトリ以下に全記事のタイトル・概要・記事へのリンクの一覧HTML
+を生成します。
+
+    $ admin/bin/archive-listpage-generate.sh
+
+    <出力>
+    archives ディレクトリ以下に、全記事のタイトル・概要・記事へのリンクの一覧HTMLファイル
+    (archives/index.html) が生成される。
+
+#### 記事インデックスファイル再生成
+
+何らかの理由で記事インデックスファイル (admin/article-list.txt) と実際の記事ディレクトリ配置に
+不整合が生じることがあります。このコマンドは記事インデックスファイルを再生成します。
+
+    $ admin/bin/fix-article-list.sh
+
+    <出力>
+    記事ディレクトリ配置、および各記事ディレクトリの内容に従い、記事インデックス (admin/article-list.txt)
+    が更新される
+
+#### 記事HTMLファイル・トップページの再生成
+
+記事のテンプレートを更新したときに、そのテンプレートに従って全ページを再生成したいときに利用します。
+
+    $ admin/bin/rebuild-article-pages.sh
+
+    <出力>
+    posts ディレクトリ以下の全記事について、新しいテンプレートを元に記事HTMLを再生成する
+    インデックスページが更新される
+
 ### TODO
 
-- 各記事間の遷移リンク
-- 月別・キーワード別分類
-- MarkdownファイルからのHTML再構築
-- 記事インデックスファイル等が壊れた場合の再生成
+- [] 各記事間の遷移リンク
+- [] 月別・キーワード別分類
+- [x] MarkdownファイルからのHTML再構築
+- [x] 記事インデックスファイル等が壊れた場合の再生成
 
