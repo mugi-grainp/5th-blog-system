@@ -20,6 +20,7 @@ date_and_directory=$(echo $1 | awk -f $(dirname $0)/fix-article-list.awk)
 # 記事ファイルからタイトルと要約を抽出
 title=$(cat $1/article.md      |
         sed -n '/^##/p'        |
+        head -n 1              |
         sed 's/^## \(.*\)/\1/' |
         tr -d '\r')
 summary=$(cat $1/article.md            |

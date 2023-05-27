@@ -49,4 +49,3 @@ END {
     print "article_directory\t" article_directory >> tempfileprefix "-metadata.tmp"
     print "article_title\t" article_title >> tempfileprefix "-metadata.tmp"
 }
-

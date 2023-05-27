@@ -17,8 +17,15 @@ export IFS LC_ALL=C LANG=C PATH
 
 Tmp=/tmp/${0##*/}.$$
 
-ARTICLE_COUNT=10
+# 終了時は常に一時ファイルを削除する
+on_exit() {
+    trap 1 2 3 15
+    rm -f "$Tmp-*"
+    exit "$1"
+}
+trap 'on_exit 1' 1 2 3 15
 # -------------------------------------
+
 
 # -------------------------------------
 # Markdownファイルに記事順に一連番号を付与する
@@ -32,31 +39,35 @@ article_dir_old="$(dirname $0)/../../posts-old"
 mkdir -p "$Tmp"
 find "$article_dir" -name article.md |
 sort                                 |
-while read fpath ; do
+while read -r fpath ; do
     cp "$fpath" "$Tmp/article_$i.md"
-    i=$(($i + 1))
+    i=$((i + 1))
 done
 # -----------------------------------------------------------------------------------------------------------
 
 # -----------------------------------------------------------------------------------------------------------
 # 元ディレクトリを退避
-mv $article_dir $article_dir_old
-mkdir -p $article_dir
+mv "$article_dir" "$article_dir_old"
+mkdir -p "$article_dir"
 
 # 記事リストファイルを退避
-mv $(dirname $0)/../article-list.txt $(dirname $0)/../article-list-old.txt
-touch $(dirname $0)/../article-list.txt
+mv "$(dirname $0)"/../article-list.txt "$(dirname $0)"/../article-list-old.txt
+touch "$(dirname $0)"/../article-list.txt
+
+# トップページを退避
+cp "$(dirname $0)"/../../index.html "$(dirname $0)"/../../index-old.html
+cp "$(dirname $0)"/../../index-prev.html "$(dirname $0)"/../../index-prev-old.html
 # -----------------------------------------------------------------------------------------------------------
 
 # -----------------------------------------------------------------------------------------------------------
 # 記事再構築
-find $Tmp -type f |
-sort -t_ -k2,2n   |
-while read fpath ; do
-    $(dirname $0)/article-generate.sh $fpath
+find "$Tmp" -type f |
+sort -t_ -k2,2n     |
+while read -r fpath ; do
+    "$(dirname $0)"/article-generate.sh "$fpath"
 done
 # -----------------------------------------------------------------------------------------------------------
 
 # 終了処理 ----------------------------
-rm -rf $Tmp
+on_exit 0
 # -------------------------------------
