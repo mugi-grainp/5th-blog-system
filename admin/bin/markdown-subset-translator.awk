@@ -6,6 +6,9 @@
 # 後ろの行で読んだ結果を前の方に反映する処理があるため、
 # 途中の変換はすべて最終出力変数に入れ、処理後にEND
 # ブロックで出力する
+#
+# 外部オプション
+#   del_p_newline: 1のとき、<p>段落中の改行を除去する
 
 BEGIN {
     # ある深さのリストを処理中であるかのフラグ
@@ -39,6 +42,7 @@ BEGIN {
 
     # 最終出力を保存する変数
     final_output = ""
+
 }
 
 # ===============================================================
@@ -183,7 +187,14 @@ $0 ~ re_ol_top {
 /^$/ {
     # 段落の区切りであれば </p> を入れる
     if (block == 1) {
-        final_output = final_output "</p>\n"
+        # del_p_newline の指定有無による分岐は単なる出力結果の
+        # 見栄え調整のものであって、本質的ではないので除去しても
+        # 動作には問題がない
+        if (del_p_newline == 1) {
+            final_output = final_output "\n</p>\n"
+        } else {
+            final_output = final_output "</p>\n"
+        }
         block = 0
     }
     # コードブロックの終わりであれば </code></pre> を入れる
@@ -208,6 +219,14 @@ $0 ~ re_ol_top {
         block = 1
     }
 
+    # 段落ブロック処理中
+    if (block == 1) {
+        # 段落ブロック中の改行を消去するよう外部からフラグが設定されている場合
+        if (del_p_newline == 1) {
+            final_output = final_output parse_span_elements($0)
+            next
+        }
+    }
     # コードブロック内の場合、コードブロックを表現する先頭の字下げ
     # を削除
     else if (block == 5) {
@@ -371,19 +390,29 @@ function make_header_str(input_hstr,       level, output_hstr) {
 
 # 文中マークアップ要素の処理
 function parse_span_elements(str,      tmp_str, output_str, link_href_and_title, link_str, link_url, link_title) {
-    # 強調処理
-    tmp_str = gensub(/ \*\*([^\*]+)\*\* /, "<strong>\\1</strong>", "g", str)
-    tmp_str = gensub(/ __([^\*]+)__ /, "<strong>\\1</strong>", "g", tmp_str)
+    # 強調処理 (通常・行頭・行末)
+    # アスタリスクは前後空白なしを許容
+    # アンダースコアは文章の一部となり得やすいので空白必須
+    tmp_str = gensub(/ ?\*\*([^\*]+)\*\* ?/, "<strong>\\1</strong>", "g", str)
+    tmp_str = gensub(/ __([^_]+)__ /, "<strong>\\1</strong>", "g", tmp_str)
+    tmp_str = gensub(/^__([^_]+)__ /, "<strong>\\1</strong>", "g", tmp_str)
+    tmp_str = gensub(/ __([^_]+)__$/, "<strong>\\1</strong>", "g", tmp_str)
 
-    # 弱い強調処理
-    tmp_str = gensub(/ \*([^\*]+)\* /, "<em>\\1</em>", "g", tmp_str)
-    tmp_str = gensub(/ _([^\*]+)_ /, "<em>\\1</em>", "g", tmp_str)
+    # 弱い強調処理 (通常・行頭・行末)
+    # アスタリスクは前後空白なしを許容
+    # アンダースコアは文章の一部となり得やすいので空白必須
+    tmp_str = gensub(/ ?\*([^\*]+)\* ?/, "<em>\\1</em>", "g", tmp_str)
+    tmp_str = gensub(/ _([^_]+)_ /, "<em>\\1</em>", "g", tmp_str)
+    tmp_str = gensub(/^_([^_]+)_ /, "<em>\\1</em>", "g", tmp_str)
+    tmp_str = gensub(/ _([^_]+)_$/, "<em>\\1</em>", "g", tmp_str)
 
-    # 打ち消しの処理
+    # 打ち消しの処理 (通常・行頭・行末)
     tmp_str = gensub(/ ~~([^~]+)~~ /, "<s>\\1</s>", "g", tmp_str)
+    tmp_str = gensub(/^~~([^~]+)~~ /, "<s>\\1</s>", "g", tmp_str)
+    tmp_str = gensub(/ ~~([^~]+)~~$/, "<s>\\1</s>", "g", tmp_str)
 
     # 単一フレーズのコードの処理
-    tmp_str = gensub(/`([^~]+)`/, "<code>\\1</code>", "g", tmp_str)
+    tmp_str = gensub(/`([^`]+)`/, "<code>\\1</code>", "g", tmp_str)
 
     # 文中リンク文字列の処理
     tmp_str = gensub(/\[([^\]]+)\]\(([^ ]+)( ?['"]([^\)]+)['"])*\)/, "<a href=\"\\2\" title=\"\\4\">\\1</a>", "g", tmp_str)
