@@ -16,6 +16,7 @@ tr -d '\r'                   > $Tmp-cgivars
 
 # 記事メタデータを設定
 postdate_hamekomi=$(./get-cgi-post-data postdate $Tmp-cgivars | sed 's/-/\./g')
+postdate_for_list="${postdate_hamekomi} $(./get-cgi-post-data posttime $Tmp-cgivars)"
 postdate_directory=$(./get-cgi-post-data postdate $Tmp-cgivars | sed 's/-//g')
 directory_title=$(./get-cgi-post-data directory $Tmp-cgivars)
 keywords=$(./get-cgi-post-data keywords $Tmp-cgivars)
@@ -51,7 +52,7 @@ else
 
     cat << MARKDOWNTEMPLATE > $Tmp-article-markdown
 ---
-postdate: ${postdate_hamekomi}
+postdate: ${postdate_for_list}
 keywords: ${keywords}
 copyright: ${copyright}
 summary: ${article_summary}

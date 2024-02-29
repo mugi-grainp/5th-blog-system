@@ -15,8 +15,8 @@ input[type='text'], textarea {
     outline: none;
 }
 
-input[type='date'] {
-    font-size: 14pt;
+input[type='date'], input[type='time'] {
+    font-size: 120%;
     border-radius: 10px;
     box-shadow: none;
     outline: none;

@@ -19,7 +19,10 @@
                     <p><label>記事要約：<br><textarea name="summary" rows="2" required></textarea></p>
                     <p><label>キーワード：<input type="text" name="keywords" required></label></p>
                     <p><label>著作権表記：<input type="text" name="copyright" id="copyright" required></label></p>
-                    <p><label>投稿日：<input type="date" name="postdate" required></label></p>
+                    <p>
+                        <label>投稿日付：<input type="date" id="postdate" name="postdate" required></label>
+                        <label>投稿時刻：<input type="time" id="posttime" name="posttime" step="1" required></label>
+                    </p>
                     <p><label>ディレクトリ：<input type="text" name="directory" required></label></p>
                     <p><label><input type="checkbox" name="overwrite">すでに記事がある場合に上書きする</label></p>
                     <p><input id="submit" type="button" value="投稿"><input id="resetbtn" type="reset" value="リセット"></p>
