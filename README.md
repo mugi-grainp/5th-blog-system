@@ -26,9 +26,12 @@ UNIX的環境で動作します。
     # 1. トップディレクトリで記事をMarkdown形式で書く
     # 2. 記事を生成する
     admin/bin/article-generate.sh article.md
-
+    
     # 3. 記事一覧ファイルを更新する
     admin/bin/archive-listpage-generate.sh
+    
+    # 4. (試行版) RSSフィードを作成する
+    ruby admin/bin/rssfeedmaker.rb admin/article-list.txt
 
 #### 記事生成
 
@@ -39,6 +42,9 @@ UNIX的環境で動作します。
     記事ディレクトリ (article/hogehoge) に記事Markdownファイルがコピーされる
     トップ (インデックス) ページが更新される
     記事インデックス (admin/article-list.txt) が更新される
+
+オプション -a (--article-generate-only) を指定すると、記事HTML生成のみを行います。
+編集・更新反映をする時に便利です。
 
 オフライン版の記事テンプレートの説明
 
@@ -81,7 +87,7 @@ UNIX的環境で動作します。
 不整合が生じることがあります。このコマンドは記事インデックスファイルを再生成します。
 
     $ admin/bin/fix-article-list.sh
-
+    
     <出力>
     記事ディレクトリ配置、および各記事ディレクトリの内容に従い、記事インデックス (admin/article-list.txt)
     が更新される
@@ -91,15 +97,23 @@ UNIX的環境で動作します。
 記事のテンプレートを更新したときに、そのテンプレートに従って全ページを再生成したいときに利用します。
 
     $ admin/bin/rebuild-article-pages.sh
-
+    
     <出力>
     posts ディレクトリ以下の全記事について、新しいテンプレートを元に記事HTMLを再生成する
     インデックスページが更新される
+
+#### RSSフィードの生成
+
+現在、Ruby版でのみ提供しています。
+
+    $ ruby admin/bin/rssfeedmaker.rb admin/article-list.txt
+    
+    <出力>
+    カレントディレクトリにRSSフィードのファイルが生成される。
 
 ### TODO
 
 - [ ] 各記事間の遷移リンク
 - [ ] 月別・キーワード別分類
-- [x] MarkdownファイルからのHTML再構築
-- [x] 記事インデックスファイル等が壊れた場合の再生成
+- [ ] RSSフィード生成もシェルスクリプトとAWKでできないか試す
 
