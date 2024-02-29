@@ -12,7 +12,6 @@ NR == 1 && $0 ~ /^---/ {
 
     # YAMLのキーの部分を消す
     sub(/postdate: /, "", postdate)
-    gsub(/ /, "", postdate)
     sub(/keywords: /, "", keywords)
     gsub(/ /, "", keywords)
     sub(/copyright: /, "", copyright)

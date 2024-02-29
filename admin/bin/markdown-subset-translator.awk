@@ -34,12 +34,18 @@ BEGIN {
     #    6  inside of blockquote
     #    7  inside of table block
     block = 0
+    # ブロックの深さ
+    block_elements_depth = 0
 
+    # 定義参照形式の画像とそのtitle属性を保存する連想配列
+    reference_img_url["\005"] = ""
+    reference_img_title["\005"] = ""
     # 定義参照形式のリンクとそのtitle属性を保存する連想配列
     reference_link_url["\005"] = ""
     reference_link_title["\005"] = ""
-    # 定義参照
-    reflink_sep = "\037"
+    # 定義参照区切り記号
+    reflink_sep = "\035"
+    refimg_sep = "\036"
 
     # 最終出力を保存する変数
     final_output = ""
@@ -118,15 +124,19 @@ BEGIN {
 # 解釈しない
 # ===============================================================
 # ブロック要素の始点
-/<(address|article|aside|blockquote|details|dialog|dd|div|dl|dt|fieldset|figcaption|figure|footer|form|h.|header|hgroup|hr|li|main|nav|ol|p|pre|section|table|ul)>/ {
+/<(address|article|aside|blockquote|details|dialog|dd|div|dl|dt|fieldset|figcaption|figure|footer|form|h.|header|hgroup|hr|li|main|nav|ol|p|pre|section|table|ul)[^>]*>/ {
     block = 2
+    block_elements += 1
     final_output = final_output $0 "\n"
     next
 }
 
 # ブロック要素の終点
 /<\/(address|article|aside|blockquote|details|dialog|dd|div|dl|dt|fieldset|figcaption|figure|footer|form|h.|header|hgroup|hr|li|main|nav|ol|p|pre|section|table|ul)>/ {
-    block = 0
+    block_elements_depth -= 1
+    if (block_elements_depth == 0) {
+        block = 0
+    }
     final_output = final_output $0 "\n"
     next
 }
@@ -180,7 +190,6 @@ $0 ~ re_ol_top {
 # リンクの定義がリンクの参照部分以降に来る
 # 定義参照部分の変換をここで行う
 # ===============================================================
-
 /^\[.+\]: +.+/ {
     link_string = gensub(/^\[([^\]]+)\]: +.+/, "\\1", 1, $0)
     link_url    = gensub(/^\[[^\]]+\]: +([^ ]+) ?.*/, "\\1", 1, $0)
@@ -250,7 +259,6 @@ $0 ~ re_ol_top {
     }
     # HTMLブロック要素処理中は単に無視する
     else if (block == 2) {
-        final_output = final_output $0 "\n"
     }
     # インライン要素を処理
     final_output = final_output parse_span_elements($0) "\n"
@@ -274,12 +282,24 @@ END {
         final_output = final_output "</code></pre>\n"
     }
 
+    # 定義参照型画像埋め込みを変換
+    for (ref in reference_link_url) {
+        # 識別子指定ありの箇所を変換
+        final_output = gensub(refimg_sep "([^\005\n]+)\005" ref refimg_sep, "<img src=\"" reference_link_url[ref] "\" title=\"" reference_link_title[ref] "\" alt=\"\\1\">", "g", final_output)
+        # 識別子指定なしの箇所を変換
+        final_output = gensub(refimg_sep ref "\005" refimg_sep, "<img src=\"" reference_link_url[ref] "\" title=\"" reference_link_title[ref] "\" alt=\"" ref "\">", "g", final_output)
+    }
+
     # 定義参照リンクを変換
     for (ref in reference_link_url) {
-        gsub(reflink_sep ref reflink_sep, "<a href=\"" reference_link_url[ref] "\" title=\"" reference_link_title[ref] "\">" ref "</a>", final_output)
-        # title属性の指定がない場合は、title属性の定義を消去する
-        gsub(/ title=""/, "", final_output)
+        # 識別子指定ありの箇所を変換
+        final_output = gensub(reflink_sep "([^\005\n]+)\005" ref reflink_sep, "<a href=\"" reference_link_url[ref] "\" title=\"" reference_link_title[ref] "\">\\1</a>", "g", final_output)
+        # final_output = gensub(reflink_sep "[^\005\n]+\005" ref reflink_sep, "HHH", "g", final_output)
+        # 識別子指定なしの箇所を変換
+        final_output = gensub(reflink_sep ref "\005" reflink_sep, "<a href=\"" reference_link_url[ref] "\" title=\"" reference_link_title[ref] "\">" ref "</a>", "g", final_output)
     }
+    # 定義参照型の画像埋め込み・リンクにおいてtitle属性の指定がない場合は、title属性の定義を消去する
+    gsub(/ title=""/, "", final_output)
 
     printf "%s", final_output
 }
@@ -360,24 +380,9 @@ function process_list(list_depth, list_type,        output_str, pos, next_depth,
             } else if (next_depth - list_depth == -1) {
                 # 1つ浅い
                 output_str = output_str "<li>" line "</li>\n"
-                output_str = output_str "</" list_type ">\n</li>\n"
-
-                # 現在行を処理対象に加える
-                line = gensub(lv2_head, "", 1, $0)
-                # 次の行以降に1つの箇条書きの続きの文がないかチェック
-                while (1) {
-                    eof_status_2 = getline
-                    if (eof_status_2 != 0 && $0 !~ lv2_head) {
-                        line = line gensub(/^ */, "", 1, $0)
-                    }
-                    else {
-                        break
-                    }
-                }
-
-                # この時点で$0に次の行が読み込まれているので、次工程では注意
-                output_str = output_str "<li>" parse_span_elements(line) "\n"
+                output_str = output_str "</" list_type ">\n"
                 is_list_processing[list_depth] = 0
+
                 return output_str
             }
         } else {
@@ -421,20 +426,27 @@ function parse_span_elements(str,      tmp_str, output_str, link_href_and_title,
     tmp_str = gensub(/ _([^_]+)_$/, "<em>\\1</em>", "g", tmp_str)
 
     # 打ち消しの処理 (通常・行頭・行末)
-    tmp_str = gensub(/ ~~([^~]+)~~ /, "<s>\\1</s>", "g", tmp_str)
-    tmp_str = gensub(/^~~([^~]+)~~ /, "<s>\\1</s>", "g", tmp_str)
-    tmp_str = gensub(/ ~~([^~]+)~~$/, "<s>\\1</s>", "g", tmp_str)
+    # （前後空白なしを許容）
+    tmp_str = gensub(/ ?~~([^~]+)~~ ?/, "<s>\\1</s>", "g", tmp_str)
 
     # 単一フレーズのコードの処理
     tmp_str = gensub(/`([^`]+)`/, "<code>\\1</code>", "g", tmp_str)
 
-    # 文中リンク文字列の処理
-    tmp_str = gensub(/\[([^\]]+)\]\(([^ ]+)( ?['"]([^\)]+)['"])*\)/, "<a href=\"\\2\" title=\"\\4\">\\1</a>", "g", tmp_str)
+    # 画像埋め込み記法の処理
+    tmp_str = gensub(/!\[([^\]]*)\]\(([^ ]+)( ?['"]([^\)]+)['"])*\)/, "<img src=\"\\2\" alt=\"\\1\" title=\"\\4\">", "g", tmp_str)
     # title属性の指定がない場合は、title属性の定義を消去する
     tmp_str = gensub(/ title=""/, "", "g", tmp_str)
 
+    # 文中リンク文字列の処理
+    tmp_str = gensub(/\[([^\]]+)\]\(([^\) ]+) ?(['"](.+)['"])*\)/, "<a href=\"\\2\" title=\"\\4\">\\1</a>", "g", tmp_str)
+    # title属性の指定がない場合は、title属性の定義を消去する
+    tmp_str = gensub(/ title=""/, "", "g", tmp_str)
+
+    # 定義参照型画像埋め込み指定のための準備
+    tmp_str = gensub(/!\[([^\]]+)\]\[([^\]]*)\]/, refimg_sep "\\1\005\\2" refimg_sep, "g", tmp_str)
     # 定義参照リンク生成のための準備
-    tmp_str = gensub(/\[([^\]]+)\]/, reflink_sep "\\1" reflink_sep, "g", tmp_str)
+    tmp_str = gensub(/\[([^\]]+)\]\[([^\]]*)\]/, reflink_sep "\\1\005\\2" reflink_sep, "g", tmp_str)
+
     output_str = tmp_str
 
     return output_str

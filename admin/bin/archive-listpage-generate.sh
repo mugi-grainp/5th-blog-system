@@ -9,9 +9,7 @@
 # なし
 #
 # 出力
-# 記事ディレクトリに記事HTMLファイルが出力される
-# 記事ディレクトリに記事Markdownファイルがコピーされる
-# インデックスページが更新される
+# 記事一覧ページが更新される
 
 # 初期化 ------------------------------
 set -u
@@ -29,8 +27,9 @@ echo "<tr><th>日付</th><th>タイトル</th><th>概要</th><td>" >> $Tmp-artic
 
 awk 'BEGIN { FS = "\t" }
      {
+         split($1, datetime_str, " ")
          printf "<tr><td>%s</td><td><a href=\"posts/%s/\">%s</a></td><td>%s</td></tr>\n",
-                $1, $2, $3, $4
+                datetime_str[1], $2, $3, $4
      }' $(dirname $0)/../article-list.txt >> $Tmp-articletable
 
 echo "</table>" >> $Tmp-articletable

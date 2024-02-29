@@ -14,10 +14,15 @@ else
     exit 0
 fi
 
-# 日付文字列・ディレクトリ文字列を生成
+# ディレクトリ文字列を生成
 date_and_directory=$(echo $1 | awk -f $(dirname $0)/fix-article-list.awk)
 
-# 記事ファイルからタイトルと要約を抽出
+# 記事ファイルから日付・タイトル・要約を抽出
+postdate=$(cat $1/article.md            |
+          sed -n '/^---/,/^---/p'       |
+          sed -n '/^postdate:/p'        |
+          sed 's/^postdate: \(.*\)/\1/' |
+          tr -d '\r')
 title=$(cat $1/article.md      |
         sed -n '/^##/p'        |
         head -n 1              |
@@ -29,5 +34,8 @@ summary=$(cat $1/article.md            |
           sed 's/^summary: \(.*\)/\1/' |
           tr -d '\r')
 
-echo -e "$date_and_directory\t$title\t$summary"
+# 記事Markdownファイルの投稿日時が日付情報だけだった場合は、0時丁度の時刻を付与する
+postdate_fix=$(date -d ${postdate//./-} +'%Y.%m.%d %H:%M:%S')
+
+echo -e "${postdate_fix}\t${date_and_directory}\t${title}\t${summary}"
 
