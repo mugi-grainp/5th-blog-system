@@ -49,10 +49,10 @@ UNIX的環境で動作します。
 オフライン版の記事テンプレートの説明
 
     ---
-    postdate: 2021.03.16
+    postdate: 2025.02.04 22:15:30
     keywords: テスト
-    copyright: Copyright(c) 2020-2021 foobar All rights reserved.
-    summary: ローカル側スクリプトのテスト
+    copyright: Copyright(c) 2025 Foo All rights reserved.
+    summary: 記事ファイルMarkdownサンプルです。
     ---
     
     # local-script-test
@@ -62,11 +62,11 @@ UNIX的環境で動作します。
     記事本文
 
 - 1行目と6行目のハイフン: メタデータの区切り
-- 2行目: 投稿日
+- 2行目: 投稿日時（時刻部分が省略された場合は00:00:00として扱います）
 - 3行目: キーワード（現バージョンでは特に意味を持ちません）
 - 4行目: 著作権表記
 - 5行目: 記事要約（トップページに表示されます）
-- 8行目: H1 -> 記事リンクの文字列 https://www.example.net/posts/20210316-local-script-test/
+- 8行目: H1 -> 記事リンクの文字列 https://www.example.net/posts/20250204-local-script-test/
 - 10行目: H2 -> 記事ページのタイトル
 
 #### 記事一覧ファイルの更新
@@ -104,9 +104,13 @@ UNIX的環境で動作します。
 
 #### RSSフィードの生成
 
-現在、Ruby版でのみ提供しています。
+Ruby版とAWK版を提供しています。
 
+    # Ruby版
     $ ruby admin/bin/rssfeedmaker.rb admin/article-list.txt
+    
+    # AWK版
+    $ awk -f admin/bin/make-rss-feed.awk admin/article-list.txt
     
     <出力>
     カレントディレクトリにRSSフィードのファイルが生成される。
@@ -115,5 +119,4 @@ UNIX的環境で動作します。
 
 - [ ] 各記事間の遷移リンク
 - [ ] 月別・キーワード別分類
-- [ ] RSSフィード生成もシェルスクリプトとAWKでできないか試す
 

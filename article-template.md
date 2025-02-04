@@ -1,13 +1,13 @@
 ---
-postdate: 2021.01.28
+postdate: 2025.02.04 22:15:30
 keywords: テスト
-copyright: Copyright(c) 2020-2021 麦（青竹） All rights reserved.
-summary: ローカル側スクリプトのテスト
+copyright: Copyright(c) 2025 Foo All rights reserved.
+summary: 記事ファイルMarkdownサンプルです。
 ---
 
-# local-script-test
+# article-markdown-sample
 
-## ローカル側スクリプトのテスト（第2）
+## 記事執筆用Markdownファイルサンプル
 
 記事テスト
 
