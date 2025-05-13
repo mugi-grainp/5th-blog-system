@@ -9,6 +9,7 @@
 #
 # 外部オプション
 #   del_p_newline: 1のとき、<p>段落中の改行を除去する
+#   th_always_center: 1のとき、テーブル記法でのタイトル行を常に中央揃えにする
 
 BEGIN {
     # ある深さのリストを処理中であるかのフラグ
@@ -42,15 +43,19 @@ BEGIN {
     # （空行が現れてもコードブロックを終わりにしない）
     code_block_by_backquote = 0
 
-    # 定義参照形式の画像とそのtitle属性を保存する連想配列
-    reference_img_url["\005"] = ""
-    reference_img_title["\005"] = ""
-    # 定義参照形式のリンクとそのtitle属性を保存する連想配列
+    # 定義参照形式のリンク・画像埋め込みとそのtitle属性を保存する連想配列
     reference_link_url["\005"] = ""
     reference_link_title["\005"] = ""
+    # 脚注のキーの出現順序と本文を保存する連想配列
+    footnote_order["\005"] = ""
+    footnote_text["\005"] = ""
+    footnote_count = 0
+
     # 定義参照区切り記号
     reflink_sep = "\035"
     refimg_sep = "\036"
+    # 脚注記法区切り記号
+    footnote_sep = "\037"
 
     # 最終出力を保存する変数
     final_output_array[0] = ""
@@ -312,9 +317,21 @@ $0 ~ re_ol_top {
 }
 
 # ===============================================================
-# 定義参照形式のリンク処理
+# 脚注記法の本体処理
+# 角括弧内の冒頭が ^ (ハット) であるものを脚注記法とする
+# ===============================================================
+/^\[\^.+\]: +.+/ {
+    fkey = gensub(/^\[\^([^\]]+)\]: +.+/, "\\1", 1, $0)
+    if (!(fkey in footnote_order)) {
+        footnote_text[fkey] = parse_span_elements(gensub(/^\[[^\]]+\]: +([^ ]+)/, "\\1", 1, $0))
+    }
+    next
+}
+
+# ===============================================================
+# 定義参照形式のリンク・画像埋め込み処理
 #
-# リンクの定義がリンクの参照部分以降に来る
+# リンク・画像パスの定義がリンク・画像の参照部分以降に来る
 # 定義参照部分の変換をここで行う
 # ===============================================================
 /^\[.+\]: +.+/ {
@@ -409,12 +426,32 @@ END {
     for (i = 1; i <= final_output_array_count; i++) {
         # 特殊文字による削除扱い行は飛ばす
         if (final_output_array[i] == "\033") { continue }
+
+        # 脚注記法の処理
+        # 脚注記法の出現順序記録処理
+        # 脚注記法区切りで文章を分割すると、偶数番目要素が必ず脚注となる
+        split_count = split(final_output_array[i], row_elem, footnote_sep)
+        if (split_count > 1) {
+            for (j = 2; j <= split_count; j++) {
+                if (j % 2 == 0 && !(row_elem[j] in footnote_order)) {
+                    footnote_order[row_elem[j]] = ++footnote_count
+                }
+            }
+        }
+        # 文字列連結
         final_output = final_output final_output_array[i] "\n"
     }
+    # 脚注を出力（存在しない場合は出力されない）
+    final_output = final_output output_footnote()
 
     # -----------------------------------------------------------------------------
     # 文字列化後の一括変換
     # -----------------------------------------------------------------------------
+    # 脚注へのリンクを生成
+    for (key in footnote_order) {
+        final_output = gensub(footnote_sep key footnote_sep, "<sup>[<a href=\"#footnote-tag-" key "\">" footnote_order[key] "</a>]</sup>", "g", final_output)
+    }
+
     # 定義参照型画像埋め込みを変換
     for (ref in reference_link_url) {
         # 識別子指定ありの箇所を変換
@@ -476,10 +513,11 @@ function process_list(list_depth, list_type,        output_str, pos, next_depth,
         # ファイル終端、または空行に行き当たったらリスト1個の終わりとする
         if (eof_status == 0 || $0 == "") {
             output_str = output_str "<li>" parse_span_elements(line) "</li>\n"
-            output_str = output_str "</" list_type ">\n"
+
 
             # 全ての深さについてリスト処理の終了を設定
             for (i = 1; i <= list_depth; i++) {
+                output_str = output_str "</" list_type ">\n"
                 is_list_processing[i] = 0
             }
             return output_str
@@ -505,20 +543,39 @@ function process_list(list_depth, list_type,        output_str, pos, next_depth,
                 } else if ($0 ~ re_ol_lv2) {
                     list_type_next_depth = "ol"
                 }
-                output_str = output_str process_list(list_depth + 1, list_type_next_depth) "</li>\n"
+
+                recursive_result = process_list(list_depth + 1, list_type_next_depth)
+                if (recursive_result !~ /<\/li>\n?$/) {
+                    output_str = output_str recursive_result "</li>\n"
+                } else {
+                    output_str = output_str recursive_result
+                }
 
                 # 最終行 or 空行検出によりリスト処理が終了している場合は、閉じタグを打つ
                 if (is_list_processing[list_depth] == 0) {
-                    output_str = output_str "</" list_type_next_depth ">\n"
+                    if (list_depth == 1) {
+                        output_str = output_str "</" list_type_next_depth ">\n"
+                    }
                     return output_str
                 }
                 # 再帰から帰ってきたこの時点で$0に次の行が読み込まれている
+                # リストが2つ以上階層を遡って戻ってきた場合に対応するため、
+                # ここで現在行のネスト段階を求め直す
+                pos = match($0, /^ {1,}/)
+                list_depth = int((RLENGTH / 4)) + 1
+
                 line = gensub(re_ul_ol_lv2, "", 1, $0)
-            } else if (next_depth - list_depth == -1) {
-                # 1つ浅い
-                output_str = output_str "<li>" line "</li>\n"
+            } else if (next_depth - list_depth < 0) {
+                # 1つ以上浅い
+                depth_diff_count = -(next_depth - list_depth)
+                output_str = output_str "<li>" parse_span_elements(line) "</li>\n"
+                for (i = 0; i < depth_diff_count - 1; i++) {
+                    output_str = output_str "</" list_type ">\n</li>\n"
+                }
                 output_str = output_str "</" list_type ">\n"
-                is_list_processing[list_depth] = 0
+                for (i = 0; i <= depth_diff_count - 1; i++) {
+                    is_list_processing[list_depth - i] = 0
+                }
 
                 return output_str
             }
@@ -585,10 +642,14 @@ function parse_span_elements(str,      tmp_str, output_str, link_href_and_title,
     # title属性の指定がない場合は、title属性の定義を消去する
     tmp_str = gensub(/ title=""/, "", "g", tmp_str)
 
+
     # 文中リンク文字列の処理
     tmp_str = gensub(/\[([^\]]+)\]\(([^\) ]+) ?(['"](.+)['"])*\)/, "<a href=\"\\2\" title=\"\\4\">\\1</a>", "g", tmp_str)
     # title属性の指定がない場合は、title属性の定義を消去する
     tmp_str = gensub(/ title=""/, "", "g", tmp_str)
+
+    # 脚注記法のための準備
+    tmp_str = gensub(/\[\^([^\]]+)\]/, footnote_sep "\\1" footnote_sep, "g", tmp_str)
 
     # 定義参照型画像埋め込み指定のための準備
     tmp_str = gensub(/!\[([^\]]+)\]\[([^\]]*)\]/, refimg_sep "\\1\005\\2" refimg_sep, "g", tmp_str)
@@ -601,32 +662,75 @@ function parse_span_elements(str,      tmp_str, output_str, link_href_and_title,
 }
 
 # テーブル記法の処理
-function process_table(       eof_status, tmp_line, output_table, mode) {
+function process_table(       eof_status, tmp_line, output_th, output_table_array, output_table, output_count, row_mode, alignment_attr_str, i) {
     # 処理モード (th, td)
-    mode = "th"
-    output_table = "<table>\n"
+    row_mode = "th"
+    # 各列の揃え位置を設定するHTMLのstyle属性
+    alignment_attr_str[0] = ""
+    # 出力
+    output_table_array[1] = "<table>"
+    output_table = ""
+    output_count = 1
 
     while(1) {
-        # ヘッダとデータを区切る線まで来たらヘッダモードからデータモードへ移行
+        # ヘッダとデータを区切る線まで来たら、文字揃え指定を判定
         if ($0 ~ /^[-\|:]+$/) {
-            mode = "td"
+            column_count = split($0, alignment_row_elem, "|")
+            for (i = 2; i < column_count; i++) {
+                if (alignment_row_elem[i] ~ /^:-+:$/) { alignment_attr_str[i - 1] = " style=\"text-align:center;\"" }
+                else if (alignment_row_elem[i] ~ /-+:$/) { alignment_attr_str[i - 1] = " style=\"text-align:right;\"" }
+                else if (alignment_row_elem[i] ~ /:-+$/) { alignment_attr_str[i - 1] = " style=\"text-align:left;\"" }
+                else { alignment_attr_str[i - 1] = "" }
+            }
+
+            # ヘッダモードからデータモードへ移行
+            row_mode = "td"
             getline
             continue
         }
-        tmp_line = gensub(/^\| */, "<tr><" mode ">", 1, $0)
-        tmp_line = gensub(/ *\|$/, "</" mode "></tr>", 1, tmp_line)
-        tmp_line = gensub(/ *\| */, "</" mode "><" mode ">", "g", tmp_line)
 
+        # タグ変換
+        tmp_line = gensub(/^\| */, "<tr><" row_mode ">", 1, $0)
+        tmp_line = gensub(/ *\|$/, "</" row_mode "></tr>", 1, tmp_line)
+        tmp_line = gensub(/ *\| */, "</" row_mode "><" row_mode ">", "g", tmp_line)
+
+        # セル内のMarkdown記法を解釈
         tmp_line = parse_span_elements(tmp_line)
 
-        output_table = output_table tmp_line "\n"
+        # ヘッダは別途保持する
+        if (row_mode == "th") {
+            output_th = tmp_line
+            if (th_always_center == 1) {
+                # ヘッダを常時通常揃えにする外部オプションが指定されている場合
+                output_th = gensub(/<th>/, "<th style=\"text-align:center;\">", "g", output_th)
+                # 置換結果を行処理にも反映
+                tmp_line = output_th
+            }
+        }
+
+        # 出力バッファに登録
+        output_table_array[++output_count] = tmp_line
 
         eof_status = getline
         if (eof_status == 0 || $0 == "") {
-            output_table = output_table "</table>"
-            return output_table
+            output_table_array[++output_count] = "</table>"
+            break
         }
     }
+
+    # 出力生成
+    # 行タイトルの揃え位置指定を反映
+    output_table_array[2] = output_th
+
+    for (j = 1; j < output_count; j++) {
+        # 各列の揃え位置指定を反映する
+        for (k = 1; k <= column_count; k++) {
+            output_table_array[j] = gensub(/<(t[hd])>/, "<\\1" alignment_attr_str[k] ">", 1, output_table_array[j])
+        }
+        output_table = output_table output_table_array[j] "\n"
+    }
+    # 最終行（</table>タグ）は改行を付けない
+    output_table = output_table output_table_array[output_count]
     return output_table
 }
 
@@ -648,4 +752,36 @@ function close_tag_if_necessary() {
         final_output_array[++final_output_array_count] = "</code></pre>"
         block = 0
     }
+}
+
+# 文書末に脚注を出力する
+function output_footnote(      footnote_list_array, footnote_key_array, footnote_output_array, footnote_output_array_count, footnote_output_str) {
+    # 脚注が存在しない場合は何も出力せずに終了
+    if (footnote_count == 0) { return "" }
+
+    footnote_output_array[0] = ""
+    footnote_output_array_count = 0
+
+    # 脚注を出現順序に従って並べ替える
+    for (key in footnote_order) {
+        footnote_list_array[footnote_order[key]] = footnote_text[key]
+        footnote_key_array[footnote_order[key]] = key
+    }
+
+    footnote_output_array[++footnote_output_array_count] = "<section class=\"footnotes\">"
+    footnote_output_array[++footnote_output_array_count] = "    <ol>"
+
+    for (i = 1; i <= footnote_count; i++) {
+        footnote_output_array[++footnote_output_array_count] = "        <li id=\"footnote-tag-" footnote_key_array[i] "\">" footnote_list_array[i] "</li>"
+    }
+
+    footnote_output_array[++footnote_output_array_count] = "    </ol>"
+    footnote_output_array[++footnote_output_array_count] = "</section>"
+
+    # 1つの文字列にして出力
+    for (i = 1; i <= footnote_output_array_count; i++) {
+        footnote_output_str = footnote_output_str footnote_output_array[i] "\n"
+    }
+
+    return footnote_output_str
 }
